@@ -89,12 +89,25 @@ input[type=date]{font-size:14px;border:none;background:none;color:var(--t);font-
 .sd.a5{background:var(--gl);color:var(--g);border-color:#97C459}
 
 /* BP */
-.bpr{display:flex;align-items:center;gap:6px}
-input[type=number]{width:72px;font-size:16px;text-align:center;border:0.5px solid var(--bd2);border-radius:var(--rads);padding:7px 4px;background:var(--b2);color:var(--t);font-family:inherit;outline:none}
+.bpr{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+input[type=number]{width:68px;font-size:16px;text-align:center;border:0.5px solid var(--bd2);border-radius:var(--rads);padding:7px 4px;background:var(--b2);color:var(--t);font-family:inherit;outline:none}
 input[type=number]:focus{border-color:var(--g)}
 .bpslash{font-size:20px;color:var(--t3)}
-.bph{font-size:12px;margin-left:4px;font-weight:500}
+.bph{font-size:12px;font-weight:500}
 .bph.ok{color:var(--g)}.bph.warn{color:var(--am)}.bph.danger{color:var(--r)}
+.bp-time-input{font-size:13px;border:0.5px solid var(--bd2);border-radius:var(--rads);padding:7px 8px;background:var(--b2);color:var(--t);font-family:inherit;outline:none;width:90px}
+.bp-time-input:focus{border-color:var(--g)}
+.bp-note-input{font-size:13px;border:0.5px solid var(--bd2);border-radius:var(--rads);padding:7px 8px;background:var(--b2);color:var(--t);font-family:inherit;outline:none;flex:1;min-width:80px}
+.bp-note-input:focus{border-color:var(--g)}
+.bp-add-btn{padding:7px 12px;font-size:13px;font-weight:500;border-radius:var(--rads);border:none;background:var(--g);color:var(--gl);cursor:pointer;font-family:inherit;white-space:nowrap}
+.bp-list{padding:0 16px 12px}
+.bp-item{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid var(--bd)}
+.bp-item:last-child{border-bottom:none}
+.bp-item-val{font-size:14px;font-weight:500;min-width:90px}
+.bp-item-val.vh{color:var(--r)}.bp-item-val.h{color:var(--am)}.bp-item-val.ok{color:var(--bm)}
+.bp-item-meta{font-size:12px;color:var(--t3);flex:1}
+.bp-item-del{font-size:18px;color:var(--t3);cursor:pointer;padding:0 4px;line-height:1;background:none;border:none;font-family:inherit}
+.bp-empty{font-size:13px;color:var(--t3);padding:10px 16px}
 
 /* Tags */
 .tw{display:flex;flex-wrap:wrap;gap:7px;padding:14px 16px}
@@ -199,15 +212,23 @@ textarea::placeholder{color:var(--t3)}
       <div class="card"><div class="cr"><span class="crl">日期</span><input type="date" id="edate"/></div></div>
       <div class="sl">状态评分（1 差 → 5 好）</div>
       <div class="sg" id="sgrid"></div>
-      <div class="sl">血压记录</div>
-      <div class="card"><div class="cr"><span class="crl">血压</span>
-        <div class="bpr">
-          <input type="number" id="bps" placeholder="收缩" min="60" max="260" inputmode="numeric"/>
-          <span class="bpslash">/</span>
-          <input type="number" id="bpd" placeholder="舒张" min="40" max="160" inputmode="numeric"/>
-          <span id="bph" class="bph"></span>
+      <div class="sl">血压记录（可多次）</div>
+      <div class="card">
+        <div class="cr" style="flex-wrap:wrap;gap:8px;align-items:flex-start;padding-bottom:12px">
+          <div class="bpr" style="width:100%">
+            <input type="number" id="bps" placeholder="收缩压" min="60" max="260" inputmode="numeric"/>
+            <span class="bpslash">/</span>
+            <input type="number" id="bpd" placeholder="舒张压" min="40" max="160" inputmode="numeric"/>
+            <span id="bph" class="bph"></span>
+          </div>
+          <div style="display:flex;gap:6px;width:100%;align-items:center;flex-wrap:wrap">
+            <input class="bp-time-input" type="time" id="bptime"/>
+            <input class="bp-note-input" type="text" id="bpnote" placeholder="备注（早起/午睡后…）" maxlength="20"/>
+            <button class="bp-add-btn" onclick="addBP()">＋ 添加</button>
+          </div>
         </div>
-      </div></div>
+        <div id="bplist"><div class="bp-empty">尚无血压记录，填写后点添加</div></div>
+      </div>
       <div class="sl">今日症状</div>
       <div class="card"><div class="tw" id="stags"></div></div>
       <div class="sl">用药情况</div>
@@ -365,6 +386,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&FC)syncNo
 function boot(){
   buildSG(); buildTags('stags',SYMS,false); buildTags('mtags',MEDS,true);
   document.getElementById('edate').value=today();
+  setDefaultTime();
 }
 function today(){return new Date().toISOString().slice(0,10)}
 
@@ -390,8 +412,10 @@ function tg(el,id,radio){
 }
 function gst(id){return Array.from(document.getElementById(id).querySelectorAll('.tp.sel')).map(t=>t.dataset.val)}
 
-// BP
-function bph(){
+// BP multi-reading
+let bpReadings=[];
+
+function bpHint(){
   const s=+document.getElementById('bps').value,d=+document.getElementById('bpd').value;
   const e=document.getElementById('bph'); e.className='bph';
   if(!s||!d){e.textContent='';return}
@@ -401,15 +425,54 @@ function bph(){
   else if(s<90||d<60){e.textContent='偏低';e.classList.add('warn')}
   else{e.textContent='正常';e.classList.add('ok')}
 }
-document.getElementById('bps').oninput=bph;
-document.getElementById('bpd').oninput=bph;
+document.getElementById('bps').oninput=bpHint;
+document.getElementById('bpd').oninput=bpHint;
+
+function bpClass(s){return s>=180?'vh':s>=140?'h':'ok'}
+function bpLabel(s,d){return s>=180?'极高':s>=140?'偏高':s<90?'偏低':'正常'}
+
+function addBP(){
+  const s=+document.getElementById('bps').value,d=+document.getElementById('bpd').value;
+  if(!s||!d){alert('请输入收缩压和舒张压');return}
+  if(s<60||s>260||d<40||d>160){alert('血压数值超出合理范围');return}
+  const time=document.getElementById('bptime').value;
+  const note=document.getElementById('bpnote').value.trim();
+  bpReadings.push({sys:s,dia:d,time,note,id:Date.now()});
+  document.getElementById('bps').value='';
+  document.getElementById('bpd').value='';
+  document.getElementById('bpnote').value='';
+  document.getElementById('bph').textContent='';
+  renderBPList();
+}
+
+function delBP(id){
+  bpReadings=bpReadings.filter(r=>r.id!==id);
+  renderBPList();
+}
+
+function renderBPList(){
+  const el=document.getElementById('bplist');
+  if(!bpReadings.length){el.innerHTML='<div class="bp-empty">尚无血压记录，填写后点添加</div>';return}
+  el.innerHTML='<div class="bp-list">'+bpReadings.map(r=>{
+    const cls=bpClass(r.sys);
+    const meta=[r.time,r.note].filter(Boolean).join(' · ');
+    return`<div class="bp-item"><span class="bp-item-val ${cls}">${r.sys}/${r.dia}</span><span class="bp-item-meta">${meta||'未标注时间'}</span><button class="bp-item-del" onclick="delBP(${r.id})">×</button></div>`;
+  }).join('')+'</div>';
+}
+
+// Set default time to now
+function setDefaultTime(){
+  const now=new Date();
+  document.getElementById('bptime').value=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+}
 
 // Save
 document.getElementById('savebtn').onclick=async function(){
   const date=document.getElementById('edate').value;
   if(!date){alert('请选择日期');return}
   const entry={date,scores:{...scores},
-    bp:{sys:+document.getElementById('bps').value||null,dia:+document.getElementById('bpd').value||null},
+    bpReadings:[...bpReadings],
+    bp:bpReadings.length?{sys:Math.max(...bpReadings.map(r=>r.sys)),dia:Math.max(...bpReadings.map(r=>r.dia))}:null,
     symptoms:gst('stags'),meds:gst('mtags'),
     note:document.getElementById('enote').value.trim(),ts:Date.now()};
   const all=ge().filter(e=>e.date!==date); all.push(entry);
@@ -419,10 +482,12 @@ document.getElementById('savebtn').onclick=async function(){
 
 function resetF(){
   scores={mental:0,mood:0,mobility:0,sleep:0,diet:0};
+  bpReadings=[];
   buildSG(); buildTags('stags',SYMS,false); buildTags('mtags',MEDS,true);
   document.getElementById('bps').value=''; document.getElementById('bpd').value='';
   document.getElementById('bph').textContent=''; document.getElementById('enote').value='';
   document.getElementById('edate').value=today();
+  renderBPList(); setDefaultTime();
 }
 
 // Nav
@@ -451,15 +516,23 @@ function renderH(){
 function renderT(){
   const entries=ge();
   if(!entries.length){['tsr','tbars','bpbars','sympbars'].forEach(id=>document.getElementById(id).innerHTML='<p style="font-size:13px;color:var(--t3);padding:4px 0">暂无数据</p>');return}
-  const bpa=entries.filter(e=>e.bp&&e.bp.sys);
-  const ab=bpa.length?Math.round(bpa.reduce((s,e)=>s+e.bp.sys,0)/bpa.length):null;
-  const hb=bpa.filter(e=>e.bp.sys>=140||e.bp.dia>=90).length;
+  // Collect ALL individual readings across all entries
+  const allReadings=entries.flatMap(e=>e.bpReadings||[]);
+  const bpa=allReadings.length?allReadings:entries.filter(e=>e.bp&&e.bp.sys).map(e=>e.bp);
+  const ab=bpa.length?Math.round(bpa.reduce((s,r)=>s+r.sys,0)/bpa.length):null;
+  const hb=entries.filter(e=>{const rs=e.bpReadings||[];return rs.some(r=>r.sys>=140||r.dia>=90)||(!rs.length&&e.bp&&(e.bp.sys>=140||e.bp.dia>=90))}).length;
   document.getElementById('tsr').innerHTML=`<div class="sb"><div class="sv">${entries.length}</div><div class="slb">记录天数</div></div><div class="sb"><div class="sv" style="color:${ab&&ab>=140?'var(--r)':'var(--bm)'}">${ab||'--'}</div><div class="slb">平均收缩压</div></div><div class="sb"><div class="sv" style="color:${hb>5?'var(--r)':'var(--g)'}">${hb}</div><div class="slb">高血压天数</div></div>`;
   const avgs={};
   SK.forEach(k=>{const v=entries.map(e=>e.scores&&e.scores[k]).filter(v=>v>0);avgs[k]=v.length?v.reduce((a,b)=>a+b)/v.length:0});
   document.getElementById('tbars').innerHTML=SK.map(k=>{const a=avgs[k],p=Math.round(a/5*100),c=a>=4?'#639922':a>=3?'#EF9F27':'#E24B4A';return`<div class="br"><span class="brl">${SL[k]}</span><div class="brt"><div class="brf" style="width:${p}%;background:${c}"></div></div><span class="brv">${a?a.toFixed(1):'-'}</span></div>`}).join('');
-  const bp10=bpa.slice(0,10).reverse();
-  document.getElementById('bpbars').innerHTML=bp10.length?bp10.map(e=>{const p=Math.round(e.bp.sys/Math.max(...bp10.map(x=>x.bp.sys),180)*100),c=e.bp.sys>=180?'#A32D2D':e.bp.sys>=140?'#E24B4A':'#378ADD';return`<div class="br"><span class="brl" style="font-size:11px">${e.date.slice(5)}</span><div class="brt"><div class="brf" style="width:${p}%;background:${c}"></div></div><span class="brv" style="color:${c}">${e.bp.sys}</span></div>`}).join(''):'<p style="font-size:13px;color:var(--t3)">暂无血压记录</p>';
+  const bpDays=entries.filter(e=>(e.bpReadings&&e.bpReadings.length)||e.bp).map(e=>{
+    const rs=e.bpReadings||[];
+    const maxSys=rs.length?Math.max(...rs.map(r=>r.sys)):(e.bp?e.bp.sys:0);
+    const maxDia=rs.length?Math.max(...rs.map(r=>r.dia)):(e.bp?e.bp.dia:0);
+    return{date:e.date,sys:maxSys,dia:maxDia,count:rs.length||1};
+  }).filter(e=>e.sys);
+  const bp10=bpDays.slice(0,10).reverse();
+  document.getElementById('bpbars').innerHTML=bp10.length?bp10.map(e=>{const p=Math.round(e.sys/Math.max(...bp10.map(x=>x.sys),180)*100),c=e.sys>=180?'#A32D2D':e.sys>=140?'#E24B4A':'#378ADD';return`<div class="br"><span class="brl" style="font-size:11px">${e.date.slice(5)}</span><div class="brt"><div class="brf" style="width:${p}%;background:${c}"></div></div><span class="brv" style="color:${c}">${e.sys}${e.count>1?'<br><span style=\'font-size:9px;color:var(--t3)\'>'+e.count+'次</span>':''}</span></div>`}).join(''):'<p style="font-size:13px;color:var(--t3)">暂无血压记录</p>';
   const fc={};entries.forEach(e=>(e.symptoms||[]).forEach(s=>{fc[s]=(fc[s]||0)+1}));
   const sorted=Object.entries(fc).sort((a,b)=>b[1]-a[1]).slice(0,8);
   document.getElementById('sympbars').innerHTML=sorted.length?sorted.map(([s,c])=>`<div class="br"><span class="brl">${s}</span><div class="brt"><div class="brf" style="width:${Math.round(c/sorted[0][1]*100)}%;background:var(--pu)"></div></div><span class="brv">${c}</span></div>`).join(''):'<p style="font-size:13px;color:var(--t3)">暂无症状记录</p>';
