@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
   <meta name="apple-mobile-web-app-title" content="外婆健康"/>
-  <link rel="manifest" href="manifest.json"/>
+  <link rel="manifest" href="/grandma-health/manifest.json"/>
   <link rel="apple-touch-icon" href="icons/icon-192.png"/>
   <title>外婆健康日记</title>
   <style>
@@ -552,6 +552,6 @@ document.getElementById('cmodal').onclick=e=>{if(e.target===e.currentTarget)clos
 let tt;
 function showT(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),2200)}
 </script>
-<script>if('serviceWorker'in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{})}</script>
+<script>if('serviceWorker'in navigator){navigator.serviceWorker.register('/grandma-health/sw.js').catch(()=>{})}</script>
 </body>
 </html>

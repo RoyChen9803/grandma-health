@@ -1,8 +1,9 @@
 {
   "name": "外婆健康日记",
   "short_name": "外婆健康",
-  "description": "外婆每日健康状态记录与追踪",
-  "start_url": "/",
+  "description": "外婆每日健康记录追踪",
+  "start_url": "/grandma-health/",
+  "scope": "/grandma-health/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#f5f4f0",
@@ -10,18 +11,16 @@
   "lang": "zh-CN",
   "icons": [
     {
-      "src": "icons/icon-192.png",
+      "src": "/grandma-health/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "icons/icon-512.png",
+      "src": "/grandma-health/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ],
-  "categories": ["health", "medical"],
-  "screenshots": []
+  ]
 }
