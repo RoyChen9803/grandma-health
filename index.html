@@ -364,9 +364,10 @@ async function syncNow(){
 
 function merge(local,remote){
   const m={};
-  for(const e of remote) m[e.date]=e;
-  for(const e of local) if(!m[e.date]||(e.ts&&e.ts>(m[e.date].ts||0))) m[e.date]=e;
-  return Object.values(m).sort((a,b)=>b.date.localeCompare(a.date));
+  // Use id as unique key; fall back to ts for old records without id
+  for(const e of remote){ const k=e.id||e.ts||e.date+'_'+Math.random(); m[k]=e; }
+  for(const e of local){ const k=e.id||e.ts||e.date+'_'+Math.random(); m[k]=e; }
+  return Object.values(m).sort((a,b)=>b.ts-a.ts);
 }
 
 function showSB(state,msg){
@@ -470,13 +471,21 @@ function setDefaultTime(){
 document.getElementById('savebtn').onclick=async function(){
   const date=document.getElementById('edate').value;
   if(!date){alert('请选择日期');return}
-  const entry={date,scores:{...scores},
+  const now=Date.now();
+  const entry={
+    id: now,
+    date,
+    scores:{...scores},
     bpReadings:[...bpReadings],
     bp:bpReadings.length?{sys:Math.max(...bpReadings.map(r=>r.sys)),dia:Math.max(...bpReadings.map(r=>r.dia))}:null,
     symptoms:gst('stags'),meds:gst('mtags'),
-    note:document.getElementById('enote').value.trim(),ts:Date.now()};
-  const all=ge().filter(e=>e.date!==date); all.push(entry);
-  all.sort((a,b)=>b.date.localeCompare(a.date)); se(all);
+    note:document.getElementById('enote').value.trim(),
+    ts:now
+  };
+  const all=ge();
+  all.push(entry);
+  all.sort((a,b)=>b.ts-a.ts);
+  se(all);
   resetF(); showT('已保存，同步中…'); await syncNow();
 };
 
@@ -501,16 +510,82 @@ function sw(name,btn){
 
 // History
 function sc2(v){return v?['#E24B4A','#BA7517','#EF9F27','#1D9E75','#3B6D11'][v-1]:'#B4B2A9'}
+function bpClass(s){return s>=180?'vh':s>=140?'h':'ok'}
+
+function delEntry(id){
+  if(!confirm('确定删除这条记录？'))return;
+  const all=ge().filter(e=>(e.id||e.ts)!==id);
+  se(all); renderH(); syncNow();
+}
+function toggleDay(uid){
+  const el=document.getElementById(uid),arr=document.getElementById('arr-'+uid);
+  const open=el.style.display==='block';
+  el.style.display=open?'none':'block';
+  arr.textContent=open?'▼':'▲';
+}
+
 function renderH(){
   const entries=ge(),el=document.getElementById('hlist');
   if(!entries.length){el.innerHTML='<div class="empty"><div class="ei">📋</div><p>还没有记录</p></div>';return}
-  el.innerHTML=entries.slice(0,60).map(e=>{
-    const s=e.bp&&e.bp.sys,bc=!s?'n':e.bp.sys>=180?'vh':e.bp.sys>=140?'h':'n';
+  // group by date
+  const byDate={};
+  for(const e of entries){if(!byDate[e.date])byDate[e.date]=[];byDate[e.date].push(e);}
+  const dates=Object.keys(byDate).sort((a,b)=>b.localeCompare(a)).slice(0,60);
+
+  function oneEntry(e,showTime){
+    const readings=e.bpReadings||[];
+    const maxSys=readings.length?Math.max(...readings.map(r=>r.sys)):(e.bp?e.bp.sys:null);
+    const bc=maxSys?bpClass(maxSys):'n';
+    const bpBadge=maxSys?`<span class="hbp ${bc}">${maxSys}/${readings.length?Math.max(...readings.map(r=>r.dia)):(e.bp?e.bp.dia:'')}</span>`:'';
+    const bpDetail=readings.length?`<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">${readings.map(r=>{const meta=[r.time,r.note].filter(Boolean).join(' ');return`<span style="font-size:12px;padding:2px 8px;border-radius:6px;background:var(--b2);color:var(--t2)">${r.sys}/${r.dia}${meta?' · '+meta:''}</span>`}).join('')}</div>`:'';
     const sch=SK.filter(k=>e.scores&&e.scores[k]).map(k=>`<span class="hslr"><span class="hdot" style="background:${sc2(e.scores[k])}"></span>${SL[k]} ${e.scores[k]}</span>`).join('');
     const tags=[...(e.symptoms||[]),...(e.meds||[])];
-    return`<div class="he"><div class="hh"><span class="hdate">${e.date.replace(/-/g,'/')}</span>${s?`<span class="hbp ${bc}">${e.bp.sys}/${e.bp.dia} mmHg</span>`:''}</div>${sch?`<div class="hsc">${sch}</div>`:''}${tags.length?`<div class="htags">${tags.map(t=>`<span class="htag">${t}</span>`).join('')}</div>`:''}${e.note?`<div class="hnote">${e.note.replace(/\n/g,'<br>')}</div>`:''}</div>`;
+    const timeStr=showTime&&e.ts?new Date(e.ts).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}):'';
+    const eid=e.id||e.ts;
+    const delBtn=`<button onclick="delEntry(${eid})" style="font-size:20px;color:var(--t3);background:none;border:none;cursor:pointer;padding:0 2px;line-height:1;margin-left:4px">×</button>`;
+    return`<div style="padding:12px 16px;border-bottom:0.5px solid var(--bd)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${sch||readings.length||tags.length||e.note?'8px':'0'}">
+        <div style="display:flex;align-items:center;gap:6px">${timeStr?`<span style="font-size:12px;color:var(--t3)">${timeStr}</span>`:''}${bpBadge}</div>
+        ${delBtn}
+      </div>
+      ${sch?`<div class="hsc">${sch}</div>`:''}
+      ${bpDetail}
+      ${tags.length?`<div class="htags">${tags.map(t=>`<span class="htag">${t}</span>`).join('')}</div>`:''}
+      ${e.note?`<div class="hnote">${e.note.replace(/\n/g,'<br>')}</div>`:''}
+    </div>`;
+  }
+
+  el.innerHTML=dates.map(date=>{
+    const dayE=byDate[date];
+    const count=dayE.length;
+    const allBP=dayE.flatMap(e=>e.bpReadings||[]);
+    const maxSys=allBP.length?Math.max(...allBP.map(r=>r.sys)):(dayE[0].bp?dayE[0].bp.sys:null);
+    const bc=maxSys?bpClass(maxSys):'n';
+    const bpBadge=maxSys?`<span class="hbp ${bc}">最高 ${maxSys}</span>`:'';
+    if(count===1){
+      const e=dayE[0];
+      return`<div class="he">`+`<div class="hh"><span class="hdate">${date.replace(/-/g,'/')}</span><div style="display:flex;align-items:center">${bpBadge}<button onclick="delEntry(${e.id||e.ts})" style="font-size:20px;color:var(--t3);background:none;border:none;cursor:pointer;padding:0 2px;line-height:1;margin-left:6px">×</button></div></div>`
+        +`${(() => {
+          const readings=e.bpReadings||[];
+          const bpD=readings.length?`<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">${readings.map(r=>{const meta=[r.time,r.note].filter(Boolean).join(' ');return`<span style="font-size:12px;padding:2px 8px;border-radius:6px;background:var(--b2);color:var(--t2)">${r.sys}/${r.dia}${meta?' · '+meta:''}</span>`}).join('')}</div>`:'';
+          const sch=SK.filter(k=>e.scores&&e.scores[k]).map(k=>`<span class="hslr"><span class="hdot" style="background:${sc2(e.scores[k])}"></span>${SL[k]} ${e.scores[k]}</span>`).join('');
+          const tags=[...(e.symptoms||[]),...(e.meds||[])];
+          return(sch?`<div class="hsc">${sch}</div>`:'')+bpD+(tags.length?`<div class="htags">${tags.map(t=>`<span class="htag">${t}</span>`).join('')}</div>`:'')+( e.note?`<div class="hnote">${e.note.replace(/\n/g,'<br>')}</div>`:'');
+        })()}</div>`;
+    } else {
+      const uid='d'+date.replace(/-/g,'');
+      const cntBadge=`<span style="font-size:11px;background:var(--gl);color:var(--g);padding:2px 8px;border-radius:10px;font-weight:500">${count}条</span>`;
+      return`<div class="he" style="padding:0;overflow:hidden">
+        <div onclick="toggleDay('${uid}')" style="display:flex;align-items:center;justify-content:space-between;padding:13px 16px;cursor:pointer">
+          <span class="hdate">${date.replace(/-/g,'/')}</span>
+          <div style="display:flex;align-items:center;gap:6px">${bpBadge}${cntBadge}<span id="arr-${uid}" style="font-size:11px;color:var(--t3)">▼</span></div>
+        </div>
+        <div id="${uid}" style="display:none">${dayE.map(e=>oneEntry(e,true)).join('')}</div>
+      </div>`;
+    }
   }).join('');
 }
+
 
 // Trend
 function renderT(){
@@ -521,7 +596,8 @@ function renderT(){
   const bpa=allReadings.length?allReadings:entries.filter(e=>e.bp&&e.bp.sys).map(e=>e.bp);
   const ab=bpa.length?Math.round(bpa.reduce((s,r)=>s+r.sys,0)/bpa.length):null;
   const hb=entries.filter(e=>{const rs=e.bpReadings||[];return rs.some(r=>r.sys>=140||r.dia>=90)||(!rs.length&&e.bp&&(e.bp.sys>=140||e.bp.dia>=90))}).length;
-  document.getElementById('tsr').innerHTML=`<div class="sb"><div class="sv">${entries.length}</div><div class="slb">记录天数</div></div><div class="sb"><div class="sv" style="color:${ab&&ab>=140?'var(--r)':'var(--bm)'}">${ab||'--'}</div><div class="slb">平均收缩压</div></div><div class="sb"><div class="sv" style="color:${hb>5?'var(--r)':'var(--g)'}">${hb}</div><div class="slb">高血压天数</div></div>`;
+  const uniqueDays=new Set(entries.map(e=>e.date)).size;
+  document.getElementById('tsr').innerHTML=`<div class="sb"><div class="sv">${uniqueDays}</div><div class="slb">记录天数</div></div><div class="sb"><div class="sv" style="color:${ab&&ab>=140?'var(--r)':'var(--bm)'}">${ab||'--'}</div><div class="slb">平均收缩压</div></div><div class="sb"><div class="sv" style="color:${hb>5?'var(--r)':'var(--g)'}">${hb}</div><div class="slb">高血压天数</div></div>`;
   const avgs={};
   SK.forEach(k=>{const v=entries.map(e=>e.scores&&e.scores[k]).filter(v=>v>0);avgs[k]=v.length?v.reduce((a,b)=>a+b)/v.length:0});
   document.getElementById('tbars').innerHTML=SK.map(k=>{const a=avgs[k],p=Math.round(a/5*100),c=a>=4?'#639922':a>=3?'#EF9F27':'#E24B4A';return`<div class="br"><span class="brl">${SL[k]}</span><div class="brt"><div class="brf" style="width:${p}%;background:${c}"></div></div><span class="brv">${a?a.toFixed(1):'-'}</span></div>`}).join('');
