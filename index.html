@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+  <meta name="theme-color" content="#3B6D11"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="外婆健康"/>
+  <link rel="manifest" href="manifest.json"/>
+  <link rel="apple-touch-icon" href="icons/icon-192.png"/>
+  <title>外婆健康日记</title>
+  <style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --g:#3B6D11;--gl:#EAF3DE;--gd:#27500A;--gm:#639922;
+  --am:#BA7517;--al:#FAEEDA;
+  --r:#A32D2D;--rl:#FCEBEB;--rm:#E24B4A;
+  --bl:#E6F1FB;--bm:#185FA5;
+  --pu:#534AB7;
+  --t:#1a1a18;--t2:#5F5E5A;--t3:#888780;
+  --bd:rgba(0,0,0,0.11);--bd2:rgba(0,0,0,0.2);
+  --bg:#f5f4f0;--bw:#fff;--b2:#f0efe9;
+  --rad:12px;--rads:8px;
+  --sab:env(safe-area-inset-bottom,0px);--sat:env(safe-area-inset-top,0px);
+}
+html,body{height:100%;background:var(--bg);font-family:-apple-system,'PingFang SC','Helvetica Neue',sans-serif;color:var(--t);overflow:hidden}
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh}
+
+/* Setup */
+#setup{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;z-index:200}
+.s-logo{width:68px;height:68px;background:var(--gl);border-radius:20px;display:flex;align-items:center;justify-content:center;margin-bottom:20px}
+.s-logo svg{width:36px;height:36px;stroke:var(--g);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.s-title{font-size:22px;font-weight:700;margin-bottom:6px;letter-spacing:-0.5px}
+.s-sub{font-size:14px;color:var(--t3);text-align:center;line-height:1.65;margin-bottom:32px}
+.s-card{width:100%;max-width:360px;background:var(--bw);border-radius:var(--rad);border:0.5px solid var(--bd);padding:20px}
+.s-lbl{font-size:11px;font-weight:700;color:var(--t3);letter-spacing:0.6px;margin-bottom:8px;text-transform:uppercase}
+.s-input{width:100%;font-size:18px;letter-spacing:1.5px;border:1.5px solid var(--bd2);border-radius:var(--rads);padding:12px 14px;background:var(--b2);color:var(--t);font-family:inherit;outline:none;text-align:center}
+.s-input:focus{border-color:var(--g)}
+.s-hint{font-size:12px;color:var(--t3);margin-top:8px;line-height:1.6}
+.s-btn{width:100%;padding:14px;font-size:16px;font-weight:600;border-radius:var(--rad);border:none;background:var(--g);color:var(--gl);cursor:pointer;margin-top:16px;font-family:inherit}
+.s-btn:disabled{opacity:0.35}
+.s-div{display:flex;align-items:center;gap:8px;margin:16px 0;color:var(--t3);font-size:12px}
+.s-div::before,.s-div::after{content:'';flex:1;height:0.5px;background:var(--bd)}
+
+/* Topbar */
+.topbar{background:var(--bw);border-bottom:0.5px solid var(--bd);padding:10px 16px 9px;padding-top:calc(10px + var(--sat));display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.tb-left{display:flex;align-items:center;gap:9px}
+.tb-title{font-size:16px;font-weight:600;letter-spacing:-0.3px}
+.tb-code{font-size:11px;color:var(--t3);background:var(--b2);padding:3px 9px;border-radius:20px;cursor:pointer}
+.sync-btn{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500;border:0.5px solid var(--bd);border-radius:20px;padding:5px 10px;background:none;cursor:pointer;font-family:inherit;color:var(--t2);transition:all .15s}
+.sync-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+.sync-btn.syncing svg{animation:spin 1s linear infinite}
+.sync-btn.ok{color:var(--g);border-color:rgba(59,109,17,.3)}
+.sync-btn.err{color:var(--r);border-color:rgba(163,45,45,.3)}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Scroll */
+.scroll-area{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 16px calc(16px + var(--sab))}
+
+/* Tabbar */
+.tabbar{background:var(--bw);border-top:0.5px solid var(--bd);display:flex;padding-bottom:var(--sab);flex-shrink:0}
+.tab-item{flex:1;display:flex;flex-direction:column;align-items:center;padding:8px 0 6px;gap:3px;cursor:pointer;border:none;background:none;color:var(--t3);font-size:10px;font-family:inherit;transition:color .15s}
+.tab-item svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.tab-item.active{color:var(--g)}
+
+.view{display:none}.view.active{display:block}
+.sl{font-size:12px;font-weight:600;color:var(--t3);letter-spacing:.5px;margin:20px 0 8px;padding-left:2px}
+.sl:first-child{margin-top:0}
+
+/* Card */
+.card{background:var(--bw);border-radius:var(--rad);border:0.5px solid var(--bd);overflow:hidden;margin-bottom:12px}
+.cr{display:flex;align-items:center;padding:13px 16px;border-bottom:0.5px solid var(--bd);gap:10px}
+.cr:last-child{border-bottom:none}
+.crl{font-size:14px;flex:1}
+input[type=date]{font-size:14px;border:none;background:none;color:var(--t);font-family:inherit;outline:none;text-align:right}
+
+/* Scores */
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.sc{background:var(--bw);border-radius:var(--rad);border:0.5px solid var(--bd);padding:12px 12px 10px}
+.scl{font-size:12px;color:var(--t2);margin-bottom:10px;display:flex;align-items:center;gap:5px}
+.scl svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8}
+.sdd{display:flex;gap:5px}
+.sd{flex:1;height:28px;border-radius:6px;border:0.5px solid var(--bd);background:var(--b2);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--t3);cursor:pointer;transition:all .1s;-webkit-user-select:none;user-select:none}
+.sd.a1{background:#FCEBEB;color:#791F1F;border-color:#F09595}
+.sd.a2{background:#FAEEDA;color:#633806;border-color:#FAC775}
+.sd.a3{background:#FAEEDA;color:#854F0B;border-color:#EF9F27}
+.sd.a4{background:var(--gl);color:var(--gd);border-color:#C0DD97}
+.sd.a5{background:var(--gl);color:var(--g);border-color:#97C459}
+
+/* BP */
+.bpr{display:flex;align-items:center;gap:6px}
+input[type=number]{width:72px;font-size:16px;text-align:center;border:0.5px solid var(--bd2);border-radius:var(--rads);padding:7px 4px;background:var(--b2);color:var(--t);font-family:inherit;outline:none}
+input[type=number]:focus{border-color:var(--g)}
+.bpslash{font-size:20px;color:var(--t3)}
+.bph{font-size:12px;margin-left:4px;font-weight:500}
+.bph.ok{color:var(--g)}.bph.warn{color:var(--am)}.bph.danger{color:var(--r)}
+
+/* Tags */
+.tw{display:flex;flex-wrap:wrap;gap:7px;padding:14px 16px}
+.tp{padding:6px 13px;font-size:13px;border-radius:20px;border:0.5px solid var(--bd);background:var(--b2);color:var(--t2);cursor:pointer;transition:all .12s;-webkit-user-select:none;user-select:none}
+.tp.sel{background:var(--gl);color:var(--g);border-color:#97C459;font-weight:500}
+
+textarea{width:100%;font-size:14px;line-height:1.6;border:none;background:none;color:var(--t);padding:13px 16px;resize:none;min-height:90px;font-family:inherit;outline:none}
+textarea::placeholder{color:var(--t3)}
+
+.btn-p{width:100%;padding:14px;font-size:16px;font-weight:600;border-radius:var(--rad);border:none;background:var(--g);color:var(--gl);cursor:pointer;margin-top:4px;font-family:inherit;letter-spacing:.2px;transition:opacity .1s}
+.btn-p:active{opacity:.8}
+
+/* Sync bar */
+.sbar{border-radius:var(--rads);padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:8px;font-size:13px;border:0.5px solid transparent}
+.sbar svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;flex-shrink:0}
+.sbar.syncing{color:var(--bm);border-color:rgba(24,95,165,.25);background:var(--bl)}
+.sbar.ok{color:var(--g);border-color:rgba(59,109,17,.25);background:var(--gl)}
+.sbar.err{color:var(--r);border-color:rgba(163,45,45,.25);background:var(--rl)}
+.sbar svg.spin{animation:spin 1s linear infinite}
+
+/* History */
+.he{background:var(--bw);border-radius:var(--rad);border:0.5px solid var(--bd);padding:14px 16px;margin-bottom:10px}
+.hh{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.hdate{font-size:15px;font-weight:600}
+.hbp{font-size:12px;padding:3px 9px;border-radius:6px;font-weight:500}
+.hbp.n{background:var(--bl);color:var(--bm)}.hbp.h{background:var(--al);color:var(--am)}.hbp.vh{background:var(--rl);color:var(--r)}
+.hsc{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.hslr{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--t2)}
+.hdot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.htags{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
+.htag{font-size:11px;padding:2px 8px;border-radius:10px;background:var(--b2);color:var(--t2)}
+.hnote{font-size:13px;color:var(--t2);line-height:1.65;border-top:0.5px solid var(--bd);padding-top:10px;margin-top:4px}
+
+/* Trend */
+.sr{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.sb{background:var(--bw);border-radius:var(--rad);border:0.5px solid var(--bd);padding:12px;text-align:center}
+.sv{font-size:24px;font-weight:600;letter-spacing:-.5px}
+.slb{font-size:11px;color:var(--t3);margin-top:3px}
+.br{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.brl{font-size:12px;color:var(--t2);width:56px;flex-shrink:0}
+.brt{flex:1;height:10px;background:var(--b2);border-radius:5px;overflow:hidden}
+.brf{height:100%;border-radius:5px;transition:width .5s cubic-bezier(.4,0,.2,1)}
+.brv{font-size:11px;color:var(--t3);width:24px;text-align:right}
+.tc{background:var(--bw);border-radius:var(--rad);border:0.5px solid var(--bd);padding:14px 16px;margin-bottom:12px}
+.tct{font-size:12px;font-weight:600;color:var(--t3);margin-bottom:12px;letter-spacing:.3px}
+
+.empty{text-align:center;padding:48px 16px;color:var(--t3)}
+.ei{font-size:40px;margin-bottom:12px}
+
+/* Toast */
+#toast{position:fixed;bottom:calc(80px + var(--sab));left:50%;transform:translateX(-50%) translateY(20px);background:#1a1a18;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:500;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap;z-index:999}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* Code modal */
+#cmodal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;align-items:flex-end;justify-content:center}
+#cmodal.open{display:flex}
+.cms{background:var(--bw);border-radius:var(--rad) var(--rad) 0 0;padding:20px 20px calc(20px + var(--sab));width:100%;max-width:480px}
+.cmt{font-size:16px;font-weight:600;margin-bottom:4px}
+.cms2{font-size:13px;color:var(--t3);margin-bottom:16px}
+  </style>
+</head>
+<body>
+
+<!-- Setup screen -->
+<div id="setup">
+  <div class="s-logo">
+    <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+  </div>
+  <div class="s-title">外婆健康日记</div>
+  <div class="s-sub">输入家庭码，所有家人用同一个码<br>即可共享记录、实时同步</div>
+  <div class="s-card">
+    <div class="s-lbl">家庭码</div>
+    <input class="s-input" id="scode" type="text" placeholder="例如：waipohealth"
+      maxlength="32" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"/>
+    <div class="s-hint">只能用英文字母、数字、横线，建议4~16位。<br>所有用同一个码的设备共享数据。</div>
+    <button class="s-btn" id="sbtn" disabled>进入</button>
+    <div class="s-div">什么是家庭码</div>
+    <div style="font-size:13px;color:var(--t3);line-height:1.65">
+      随便取一个只有家人知道的词，把它发给妈妈和需要看数据的人，大家打开这个网页输入同一个码就能共享所有记录。不需要注册账号。
+    </div>
+  </div>
+</div>
+
+<!-- Main app -->
+<div id="app" style="display:none">
+  <div class="topbar">
+    <div class="tb-left">
+      <div class="tb-title">外婆健康日记</div>
+      <div class="tb-code" id="cdisp" onclick="openCM()"></div>
+    </div>
+    <button class="sync-btn" id="syncbtn" onclick="syncNow()">
+      <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+      <span id="slbl">同步</span>
+    </button>
+  </div>
+
+  <div class="scroll-area" id="sa">
+    <!-- Record -->
+    <div id="view-record" class="view active">
+      <div id="rsbar"></div>
+      <div class="sl">记录日期</div>
+      <div class="card"><div class="cr"><span class="crl">日期</span><input type="date" id="edate"/></div></div>
+      <div class="sl">状态评分（1 差 → 5 好）</div>
+      <div class="sg" id="sgrid"></div>
+      <div class="sl">血压记录</div>
+      <div class="card"><div class="cr"><span class="crl">血压</span>
+        <div class="bpr">
+          <input type="number" id="bps" placeholder="收缩" min="60" max="260" inputmode="numeric"/>
+          <span class="bpslash">/</span>
+          <input type="number" id="bpd" placeholder="舒张" min="40" max="160" inputmode="numeric"/>
+          <span id="bph" class="bph"></span>
+        </div>
+      </div></div>
+      <div class="sl">今日症状</div>
+      <div class="card"><div class="tw" id="stags"></div></div>
+      <div class="sl">用药情况</div>
+      <div class="card"><div class="tw" id="mtags"></div></div>
+      <div class="sl">详细备注</div>
+      <div class="card"><textarea id="enote" placeholder="记录今天的具体情况：白天活动、精神状态、与家人互动、夜间情况等…"></textarea></div>
+      <button class="btn-p" id="savebtn">保存并同步</button>
+      <div style="height:8px"></div>
+    </div>
+
+    <!-- History -->
+    <div id="view-history" class="view"><div id="hlist"></div></div>
+
+    <!-- Trend -->
+    <div id="view-trend" class="view">
+      <div class="sl">近期概况</div>
+      <div class="sr" id="tsr"></div>
+      <div class="sl">各维度平均</div>
+      <div class="tc"><div class="tct">评分均值（5分满分）</div><div id="tbars"></div></div>
+      <div class="sl">血压趋势</div>
+      <div class="tc"><div class="tct">收缩压（近10次）</div><div id="bpbars"></div></div>
+      <div class="sl">高频症状</div>
+      <div class="tc"><div class="tct">出现频次 Top 8</div><div id="sympbars"></div></div>
+      <div style="height:8px"></div>
+    </div>
+  </div>
+
+  <div class="tabbar">
+    <button class="tab-item active" onclick="sw('record',this)">
+      <svg viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5"/><path d="M17.657 3.757a2 2 0 0 1 2.828 2.829L12 15l-4 1 1-4 9.657-8.243z"/></svg>
+      记录
+    </button>
+    <button class="tab-item" onclick="sw('history',this)">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg>
+      历史
+    </button>
+    <button class="tab-item" onclick="sw('trend',this)">
+      <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m7 16 4-4 4 4 4-5"/></svg>
+      趋势
+    </button>
+  </div>
+</div>
+
+<!-- Code modal -->
+<div id="cmodal">
+  <div class="cms">
+    <div class="cmt">切换家庭码</div>
+    <div class="cms2">输入新码后切换到对应的数据空间</div>
+    <input class="s-input" id="mcode" type="text" maxlength="32" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" style="margin-bottom:12px"/>
+    <button class="btn-p" style="margin-top:0" onclick="changeCode()">切换</button>
+    <button style="width:100%;padding:12px;font-size:15px;border:none;background:none;color:var(--t3);cursor:pointer;margin-top:8px;font-family:inherit" onclick="closeCM()">取消</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ▶ IMPORTANT: Replace with your Cloudflare Worker URL after deploying worker/
+const API = 'https://grandma-health-sync.roy-chen.workers.dev';
+
+const SK=['mental','mood','mobility','sleep','diet'];
+const SL={mental:'精神',mood:'情绪',mobility:'行动',sleep:'睡眠',diet:'饮食'};
+const SI={
+  mental:'<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>',
+  mood:'<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round"><circle cx="12" cy="12" r="10"/><path d="M8 13s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/></svg>',
+  mobility:'<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round"><path d="M13 4a1 1 0 1 1-2 0 1 1 0 0 1 2 0"/><path d="m6 20 4-10 2 4 2-3 4 9"/><path d="m6 9 6-1 4 3"/></svg>',
+  sleep:'<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>',
+  diet:'<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>'
+};
+const SYMS=['头晕','头痛','胸闷','心慌','焦虑','幻觉','妄想','激动不安','坐卧不安','拒绝配合','认知混乱','说胡话','肩痛','跌倒','呕吐','浮肿','气短','食欲差'];
+const MEDS=['按时服药','拒绝服药','漏服','自行加量'];
+
+let FC='', scores={mental:0,mood:0,mobility:0,sleep:0,diet:0};
+
+// Storage
+const ge=()=>{try{return JSON.parse(localStorage.getItem('gme_v2')||'[]')}catch{return[]}};
+const se=a=>localStorage.setItem('gme_v2',JSON.stringify(a));
+const gc=()=>localStorage.getItem('gmc')||'';
+const sc=c=>localStorage.setItem('gmc',c);
+
+// Setup
+const si=document.getElementById('scode'), sb=document.getElementById('sbtn');
+si.oninput=()=>{const v=si.value.trim();sb.disabled=!v||v.length<4||!/^[a-zA-Z0-9_-]+$/.test(v)};
+si.onkeydown=e=>{if(e.key==='Enter'&&!sb.disabled)enter()};
+sb.onclick=enter;
+
+function enter(){
+  const v=si.value.trim().toLowerCase(); if(!v)return;
+  FC=v; sc(v);
+  document.getElementById('setup').style.display='none';
+  document.getElementById('app').style.display='flex';
+  document.getElementById('cdisp').textContent='码：'+v;
+  boot(); syncNow();
+}
+
+window.addEventListener('DOMContentLoaded',()=>{
+  const s=gc(); if(!s)return;
+  FC=s; si.value=s;
+  document.getElementById('setup').style.display='none';
+  document.getElementById('app').style.display='flex';
+  document.getElementById('cdisp').textContent='码：'+s;
+  boot(); syncNow();
+});
+
+// Sync
+function setSS(state,label){
+  const b=document.getElementById('syncbtn'),l=document.getElementById('slbl');
+  b.className='sync-btn '+(state==='ok'?'ok':state==='err'?'err':state==='syncing'?'syncing':'');
+  l.textContent=label||(state==='ok'?'已同步':state==='err'?'失败':'同步');
+  b.querySelector('svg').className=state==='syncing'?'spin':'';
+}
+
+async function syncNow(){
+  if(!FC)return;
+  setSS('syncing','同步中…'); showSB('syncing','正在同步…');
+  try{
+    const res=await fetch(`${API}/api/entries?code=${FC}`);
+    if(!res.ok)throw new Error(res.status);
+    const remote=await res.json();
+    const merged=merge(ge(), remote.entries||[]);
+    const put=await fetch(`${API}/api/entries?code=${FC}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({entries:merged})});
+    if(!put.ok)throw new Error(put.status);
+    se(merged);
+    setSS('ok'); showSB('ok',`已同步 · ${merged.length}条记录`);
+    const av=document.querySelector('.view.active')?.id;
+    if(av==='view-history')renderH();
+    if(av==='view-trend')renderT();
+  }catch(e){
+    setSS('err'); showSB('err','同步失败，数据已保存本地');
+    console.error(e);
+  }
+}
+
+function merge(local,remote){
+  const m={};
+  for(const e of remote) m[e.date]=e;
+  for(const e of local) if(!m[e.date]||(e.ts&&e.ts>(m[e.date].ts||0))) m[e.date]=e;
+  return Object.values(m).sort((a,b)=>b.date.localeCompare(a.date));
+}
+
+function showSB(state,msg){
+  const icons={
+    syncing:'<svg viewBox="0 0 24 24" class="spin"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>',
+    ok:'<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>',
+    err:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
+  };
+  const b=document.getElementById('rsbar');
+  b.className='sbar '+state; b.innerHTML=icons[state]+msg; b.style.display='flex';
+}
+
+setInterval(()=>{if(FC)syncNow()},60000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&FC)syncNow()});
+
+// Boot
+function boot(){
+  buildSG(); buildTags('stags',SYMS,false); buildTags('mtags',MEDS,true);
+  document.getElementById('edate').value=today();
+}
+function today(){return new Date().toISOString().slice(0,10)}
+
+// Score grid
+function buildSG(){
+  document.getElementById('sgrid').innerHTML=SK.map(k=>`
+    <div class="sc"><div class="scl">${SI[k]} ${SL[k]}</div>
+    <div class="sdd" id="sd-${k}">${[1,2,3,4,5].map(n=>`<div class="sd" onclick="setS('${k}',${n})">${n}</div>`).join('')}</div>
+    </div>`).join('');
+}
+function setS(k,v){
+  scores[k]=v;
+  document.getElementById('sd-'+k).querySelectorAll('.sd').forEach((d,i)=>{d.className='sd'+(i<v?' a'+v:'')});
+}
+
+// Tags
+function buildTags(id,items,radio){
+  document.getElementById(id).innerHTML=items.map(s=>`<div class="tp" data-val="${s}" onclick="tg(this,'${id}',${radio})">${s}</div>`).join('');
+}
+function tg(el,id,radio){
+  if(radio){document.getElementById(id).querySelectorAll('.tp').forEach(t=>t.classList.remove('sel'))}
+  el.classList.toggle('sel');
+}
+function gst(id){return Array.from(document.getElementById(id).querySelectorAll('.tp.sel')).map(t=>t.dataset.val)}
+
+// BP
+function bph(){
+  const s=+document.getElementById('bps').value,d=+document.getElementById('bpd').value;
+  const e=document.getElementById('bph'); e.className='bph';
+  if(!s||!d){e.textContent='';return}
+  if(s>=180||d>=110){e.textContent='⚠极高';e.classList.add('danger')}
+  else if(s>=160||d>=100){e.textContent='高';e.classList.add('danger')}
+  else if(s>=140||d>=90){e.textContent='偏高';e.classList.add('warn')}
+  else if(s<90||d<60){e.textContent='偏低';e.classList.add('warn')}
+  else{e.textContent='正常';e.classList.add('ok')}
+}
+document.getElementById('bps').oninput=bph;
+document.getElementById('bpd').oninput=bph;
+
+// Save
+document.getElementById('savebtn').onclick=async function(){
+  const date=document.getElementById('edate').value;
+  if(!date){alert('请选择日期');return}
+  const entry={date,scores:{...scores},
+    bp:{sys:+document.getElementById('bps').value||null,dia:+document.getElementById('bpd').value||null},
+    symptoms:gst('stags'),meds:gst('mtags'),
+    note:document.getElementById('enote').value.trim(),ts:Date.now()};
+  const all=ge().filter(e=>e.date!==date); all.push(entry);
+  all.sort((a,b)=>b.date.localeCompare(a.date)); se(all);
+  resetF(); showT('已保存，同步中…'); await syncNow();
+};
+
+function resetF(){
+  scores={mental:0,mood:0,mobility:0,sleep:0,diet:0};
+  buildSG(); buildTags('stags',SYMS,false); buildTags('mtags',MEDS,true);
+  document.getElementById('bps').value=''; document.getElementById('bpd').value='';
+  document.getElementById('bph').textContent=''; document.getElementById('enote').value='';
+  document.getElementById('edate').value=today();
+}
+
+// Nav
+function sw(name,btn){
+  document.querySelectorAll('.tab-item').forEach(t=>t.classList.remove('active')); btn.classList.add('active');
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  document.getElementById('sa').scrollTop=0;
+  if(name==='history')renderH(); if(name==='trend')renderT();
+}
+
+// History
+function sc2(v){return v?['#E24B4A','#BA7517','#EF9F27','#1D9E75','#3B6D11'][v-1]:'#B4B2A9'}
+function renderH(){
+  const entries=ge(),el=document.getElementById('hlist');
+  if(!entries.length){el.innerHTML='<div class="empty"><div class="ei">📋</div><p>还没有记录</p></div>';return}
+  el.innerHTML=entries.slice(0,60).map(e=>{
+    const s=e.bp&&e.bp.sys,bc=!s?'n':e.bp.sys>=180?'vh':e.bp.sys>=140?'h':'n';
+    const sch=SK.filter(k=>e.scores&&e.scores[k]).map(k=>`<span class="hslr"><span class="hdot" style="background:${sc2(e.scores[k])}"></span>${SL[k]} ${e.scores[k]}</span>`).join('');
+    const tags=[...(e.symptoms||[]),...(e.meds||[])];
+    return`<div class="he"><div class="hh"><span class="hdate">${e.date.replace(/-/g,'/')}</span>${s?`<span class="hbp ${bc}">${e.bp.sys}/${e.bp.dia} mmHg</span>`:''}</div>${sch?`<div class="hsc">${sch}</div>`:''}${tags.length?`<div class="htags">${tags.map(t=>`<span class="htag">${t}</span>`).join('')}</div>`:''}${e.note?`<div class="hnote">${e.note.replace(/\n/g,'<br>')}</div>`:''}</div>`;
+  }).join('');
+}
+
+// Trend
+function renderT(){
+  const entries=ge();
+  if(!entries.length){['tsr','tbars','bpbars','sympbars'].forEach(id=>document.getElementById(id).innerHTML='<p style="font-size:13px;color:var(--t3);padding:4px 0">暂无数据</p>');return}
+  const bpa=entries.filter(e=>e.bp&&e.bp.sys);
+  const ab=bpa.length?Math.round(bpa.reduce((s,e)=>s+e.bp.sys,0)/bpa.length):null;
+  const hb=bpa.filter(e=>e.bp.sys>=140||e.bp.dia>=90).length;
+  document.getElementById('tsr').innerHTML=`<div class="sb"><div class="sv">${entries.length}</div><div class="slb">记录天数</div></div><div class="sb"><div class="sv" style="color:${ab&&ab>=140?'var(--r)':'var(--bm)'}">${ab||'--'}</div><div class="slb">平均收缩压</div></div><div class="sb"><div class="sv" style="color:${hb>5?'var(--r)':'var(--g)'}">${hb}</div><div class="slb">高血压天数</div></div>`;
+  const avgs={};
+  SK.forEach(k=>{const v=entries.map(e=>e.scores&&e.scores[k]).filter(v=>v>0);avgs[k]=v.length?v.reduce((a,b)=>a+b)/v.length:0});
+  document.getElementById('tbars').innerHTML=SK.map(k=>{const a=avgs[k],p=Math.round(a/5*100),c=a>=4?'#639922':a>=3?'#EF9F27':'#E24B4A';return`<div class="br"><span class="brl">${SL[k]}</span><div class="brt"><div class="brf" style="width:${p}%;background:${c}"></div></div><span class="brv">${a?a.toFixed(1):'-'}</span></div>`}).join('');
+  const bp10=bpa.slice(0,10).reverse();
+  document.getElementById('bpbars').innerHTML=bp10.length?bp10.map(e=>{const p=Math.round(e.bp.sys/Math.max(...bp10.map(x=>x.bp.sys),180)*100),c=e.bp.sys>=180?'#A32D2D':e.bp.sys>=140?'#E24B4A':'#378ADD';return`<div class="br"><span class="brl" style="font-size:11px">${e.date.slice(5)}</span><div class="brt"><div class="brf" style="width:${p}%;background:${c}"></div></div><span class="brv" style="color:${c}">${e.bp.sys}</span></div>`}).join(''):'<p style="font-size:13px;color:var(--t3)">暂无血压记录</p>';
+  const fc={};entries.forEach(e=>(e.symptoms||[]).forEach(s=>{fc[s]=(fc[s]||0)+1}));
+  const sorted=Object.entries(fc).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  document.getElementById('sympbars').innerHTML=sorted.length?sorted.map(([s,c])=>`<div class="br"><span class="brl">${s}</span><div class="brt"><div class="brf" style="width:${Math.round(c/sorted[0][1]*100)}%;background:var(--pu)"></div></div><span class="brv">${c}</span></div>`).join(''):'<p style="font-size:13px;color:var(--t3)">暂无症状记录</p>';
+}
+
+// Code modal
+function openCM(){document.getElementById('mcode').value=FC;document.getElementById('cmodal').classList.add('open')}
+function closeCM(){document.getElementById('cmodal').classList.remove('open')}
+function changeCode(){
+  const v=document.getElementById('mcode').value.trim().toLowerCase();
+  if(!v||v.length<4||!/^[a-zA-Z0-9_-]+$/.test(v)){alert('家庭码格式不正确');return}
+  FC=v;sc(v);document.getElementById('cdisp').textContent='码：'+v;closeCM();syncNow();
+}
+document.getElementById('cmodal').onclick=e=>{if(e.target===e.currentTarget)closeCM()};
+
+// Toast
+let tt;
+function showT(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),2200)}
+</script>
+<script>if('serviceWorker'in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{})}</script>
+</body>
+</html>
