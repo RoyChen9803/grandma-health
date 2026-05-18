@@ -315,7 +315,8 @@ const MEDS=['按时服药','拒绝服药','漏服','自行加量'];
 let FC='', scores={mental:0,mood:0,mobility:0,sleep:0,diet:0};
 
 // Storage
-const ge=()=>{try{return JSON.parse(localStorage.getItem('gme_v2')||'[]')}catch{return[]}};
+const geAll=()=>{try{return JSON.parse(localStorage.getItem('gme_v2')||'[]')}catch{return[]}};
+const ge=()=>geAll().filter(e=>!e._deleted);
 const se=a=>localStorage.setItem('gme_v2',JSON.stringify(a));
 const gc=()=>localStorage.getItem('gmc')||'';
 const sc=c=>localStorage.setItem('gmc',c);
@@ -359,7 +360,7 @@ async function syncNow(){
     const res=await fetch(`${API}/api/entries?code=${FC}`);
     if(!res.ok)throw new Error(res.status);
     const remote=await res.json();
-    const merged=merge(ge(), remote.entries||[]);
+    const merged=merge(geAll(), remote.entries||[]);
     const put=await fetch(`${API}/api/entries?code=${FC}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({entries:merged})});
     if(!put.ok)throw new Error(put.status);
     se(merged);
@@ -375,9 +376,10 @@ async function syncNow(){
 
 function merge(local,remote){
   const m={};
-  // Use id as unique key; fall back to ts for old records without id
-  for(const e of remote){ const k=e.id||e.ts||e.date+'_'+Math.random(); m[k]=e; }
-  for(const e of local){ const k=e.id||e.ts||e.date+'_'+Math.random(); m[k]=e; }
+  for(const e of remote){ const k=e.id||e.ts; if(k) m[k]=e; }
+  // Local always wins (including deletions)
+  for(const e of local){ const k=e.id||e.ts; if(k) m[k]=e; }
+  // Filter out tombstones for display, keep them for sync
   return Object.values(m).sort((a,b)=>b.ts-a.ts);
 }
 
@@ -525,7 +527,8 @@ function bpClass(s){return s>=180?'vh':s>=140?'h':'ok'}
 
 function openDetail(id){
   const all=ge();
-  const e=all.find(x=>(x.id||x.ts)===id);
+  const numId=+id;
+  const e=all.find(x=>(x.id||x.ts)===numId);
   if(!e)return;
   document.getElementById('dp-title').textContent=e.date.replace(/-/g,'/');
   const readings=e.bpReadings||[];
@@ -580,7 +583,12 @@ function closeDetail(){
 
 function delEntry(id){
   if(!confirm('确定删除这条记录？'))return;
-  const all=ge().filter(e=>(e.id||e.ts)!==id);
+  const numId=+id;
+  // Mark deleted with tombstone so server sync won't resurrect it
+  const all=ge().map(e=>{
+    if((e.id||e.ts)===numId) return {...e, _deleted:true};
+    return e;
+  });
   se(all); renderH(); syncNow();
 }
 function toggleDay(uid){
