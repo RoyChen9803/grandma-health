@@ -512,6 +512,61 @@ function sw(name,btn){
 function sc2(v){return v?['#E24B4A','#BA7517','#EF9F27','#1D9E75','#3B6D11'][v-1]:'#B4B2A9'}
 function bpClass(s){return s>=180?'vh':s>=140?'h':'ok'}
 
+function openDetail(id){
+  const all=ge();
+  const e=all.find(x=>(x.id||x.ts)===id);
+  if(!e)return;
+  document.getElementById('dp-title').textContent=e.date.replace(/-/g,'/');
+  const readings=e.bpReadings||[];
+  const sch=SK.filter(k=>e.scores&&e.scores[k]);
+  const tags=[...(e.symptoms||[]),...(e.meds||[])];
+  let html='';
+
+  // Scores
+  if(sch.length){
+    html+=`<div class="dp-section">状态评分</div><div class="dp-card">`;
+    sch.forEach(k=>{
+      const v=e.scores[k];
+      const col=sc2(v);
+      html+=`<div class="dp-row"><span class="dp-row-label">${SL[k]}</span><div class="score-bar-wrap"><div class="score-bar-bg"><div class="score-bar-fg" style="width:${v/5*100}%;background:${col}"></div></div><span class="dp-row-val" style="color:${col}">${v} 分</span></div></div>`;
+    });
+    html+=`</div>`;
+  }
+
+  // BP
+  if(readings.length){
+    html+=`<div class="dp-section">血压记录</div><div class="dp-card">`;
+    readings.forEach(r=>{
+      const bc=bpClass(r.sys);
+      const bcol=bc==='vh'?'var(--r)':bc==='h'?'var(--am)':'var(--bm)';
+      const meta=[r.time,r.note].filter(Boolean).join(' · ');
+      html+=`<div class="dp-row"><span class="dp-row-label">${meta||'未标注时间'}</span><span class="dp-row-val" style="color:${bcol}">${r.sys}/${r.dia} <small style="font-size:10px;color:var(--t3)">mmHg</small></span></div>`;
+    });
+    html+=`</div>`;
+  }
+
+  // Symptoms & meds
+  if(tags.length){
+    html+=`<div class="dp-section">症状与用药</div><div class="dp-card" style="display:flex;flex-wrap:wrap;gap:6px;padding:12px 16px">`;
+    tags.forEach(t=>{ html+=`<span class="htag">${t}</span>`; });
+    html+=`</div>`;
+  }
+
+  // Note
+  if(e.note){
+    html+=`<div class="dp-section">详细备注</div><div class="dp-card"><p style="font-size:14px;line-height:1.7;color:var(--t2)">${e.note.replace(/\n/g,'<br>')}</p></div>`;
+  }
+
+  if(!html) html=`<div class="empty"><div class="ei">📋</div><p>这条记录没有详细内容</p></div>`;
+
+  document.getElementById('dp-scroll').innerHTML=html;
+  document.getElementById('detail-panel').classList.add('open');
+}
+
+function closeDetail(){
+  document.getElementById('detail-panel').classList.remove('open');
+}
+
 function delEntry(id){
   if(!confirm('确定删除这条记录？'))return;
   const all=ge().filter(e=>(e.id||e.ts)!==id);
@@ -527,32 +582,28 @@ function toggleDay(uid){
 function renderH(){
   const entries=ge(),el=document.getElementById('hlist');
   if(!entries.length){el.innerHTML='<div class="empty"><div class="ei">📋</div><p>还没有记录</p></div>';return}
-  // group by date
   const byDate={};
   for(const e of entries){if(!byDate[e.date])byDate[e.date]=[];byDate[e.date].push(e);}
   const dates=Object.keys(byDate).sort((a,b)=>b.localeCompare(a)).slice(0,60);
 
-  function oneEntry(e,showTime){
+  function oneEntryInner(e){
     const readings=e.bpReadings||[];
     const maxSys=readings.length?Math.max(...readings.map(r=>r.sys)):(e.bp?e.bp.sys:null);
     const bc=maxSys?bpClass(maxSys):'n';
     const bpBadge=maxSys?`<span class="hbp ${bc}">${maxSys}/${readings.length?Math.max(...readings.map(r=>r.dia)):(e.bp?e.bp.dia:'')}</span>`:'';
-    const bpDetail=readings.length?`<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">${readings.map(r=>{const meta=[r.time,r.note].filter(Boolean).join(' ');return`<span style="font-size:12px;padding:2px 8px;border-radius:6px;background:var(--b2);color:var(--t2)">${r.sys}/${r.dia}${meta?' · '+meta:''}</span>`}).join('')}</div>`:'';
     const sch=SK.filter(k=>e.scores&&e.scores[k]).map(k=>`<span class="hslr"><span class="hdot" style="background:${sc2(e.scores[k])}"></span>${SL[k]} ${e.scores[k]}</span>`).join('');
     const tags=[...(e.symptoms||[]),...(e.meds||[])];
-    const timeStr=showTime&&e.ts?new Date(e.ts).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}):'';
     const eid=e.id||e.ts;
-    const delBtn=`<button onclick="delEntry(${eid})" style="font-size:20px;color:var(--t3);background:none;border:none;cursor:pointer;padding:0 2px;line-height:1;margin-left:4px">×</button>`;
-    return`<div style="padding:12px 16px;border-bottom:0.5px solid var(--bd)">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${sch||readings.length||tags.length||e.note?'8px':'0'}">
-        <div style="display:flex;align-items:center;gap:6px">${timeStr?`<span style="font-size:12px;color:var(--t3)">${timeStr}</span>`:''}${bpBadge}</div>
-        ${delBtn}
+    return `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${sch||readings.length||tags.length||e.note?'8px':'0'}">
+        <div style="display:flex;align-items:center;gap:6px">${bpBadge}</div>
+        <div style="display:flex;gap:4px">
+          <button onclick="openDetail(${eid})" style="font-size:12px;padding:3px 10px;border-radius:6px;background:var(--gl);color:var(--g);border:none;cursor:pointer;font-weight:500">详情</button>
+          <button onclick="delEntry(${eid})" style="font-size:18px;color:var(--t3);background:none;border:none;cursor:pointer;padding:0 4px;line-height:1">×</button>
+        </div>
       </div>
       ${sch?`<div class="hsc">${sch}</div>`:''}
-      ${bpDetail}
       ${tags.length?`<div class="htags">${tags.map(t=>`<span class="htag">${t}</span>`).join('')}</div>`:''}
-      ${e.note?`<div class="hnote">${e.note.replace(/\n/g,'<br>')}</div>`:''}
-    </div>`;
+      ${e.note?`<div class="hnote" style="-webkit-line-clamp:2;display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden">${e.note.replace(/\n/g,' ')}</div>`:''}`;
   }
 
   el.innerHTML=dates.map(date=>{
@@ -564,54 +615,144 @@ function renderH(){
     const bpBadge=maxSys?`<span class="hbp ${bc}">最高 ${maxSys}</span>`:'';
     if(count===1){
       const e=dayE[0];
-      return`<div class="he">`+`<div class="hh"><span class="hdate">${date.replace(/-/g,'/')}</span><div style="display:flex;align-items:center">${bpBadge}<button onclick="delEntry(${e.id||e.ts})" style="font-size:20px;color:var(--t3);background:none;border:none;cursor:pointer;padding:0 2px;line-height:1;margin-left:6px">×</button></div></div>`
-        +`${(() => {
-          const readings=e.bpReadings||[];
-          const bpD=readings.length?`<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">${readings.map(r=>{const meta=[r.time,r.note].filter(Boolean).join(' ');return`<span style="font-size:12px;padding:2px 8px;border-radius:6px;background:var(--b2);color:var(--t2)">${r.sys}/${r.dia}${meta?' · '+meta:''}</span>`}).join('')}</div>`:'';
-          const sch=SK.filter(k=>e.scores&&e.scores[k]).map(k=>`<span class="hslr"><span class="hdot" style="background:${sc2(e.scores[k])}"></span>${SL[k]} ${e.scores[k]}</span>`).join('');
-          const tags=[...(e.symptoms||[]),...(e.meds||[])];
-          return(sch?`<div class="hsc">${sch}</div>`:'')+bpD+(tags.length?`<div class="htags">${tags.map(t=>`<span class="htag">${t}</span>`).join('')}</div>`:'')+( e.note?`<div class="hnote">${e.note.replace(/\n/g,'<br>')}</div>`:'');
-        })()}</div>`;
+      return`<div class="he"><div class="hh"><span class="hdate">${date.replace(/-/g,'/')}</span>${bpBadge}</div>${oneEntryInner(e)}</div>`;
     } else {
       const uid='d'+date.replace(/-/g,'');
       const cntBadge=`<span style="font-size:11px;background:var(--gl);color:var(--g);padding:2px 8px;border-radius:10px;font-weight:500">${count}条</span>`;
+      const inner=dayE.map(e=>`
+        <div style="padding:12px 16px;border-top:0.5px solid var(--bd)">
+          <div style="font-size:11px;color:var(--t3);margin-bottom:8px">${e.ts?new Date(e.ts).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}):''}</div>
+          ${oneEntryInner(e)}
+        </div>`).join('');
       return`<div class="he" style="padding:0;overflow:hidden">
         <div onclick="toggleDay('${uid}')" style="display:flex;align-items:center;justify-content:space-between;padding:13px 16px;cursor:pointer">
           <span class="hdate">${date.replace(/-/g,'/')}</span>
           <div style="display:flex;align-items:center;gap:6px">${bpBadge}${cntBadge}<span id="arr-${uid}" style="font-size:11px;color:var(--t3)">▼</span></div>
         </div>
-        <div id="${uid}" style="display:none">${dayE.map(e=>oneEntry(e,true)).join('')}</div>
+        <div id="${uid}" style="display:none">${inner}</div>
       </div>`;
     }
   }).join('');
 }
 
-
 // Trend
+const CHART_COLORS=['#3B6D11','#185FA5','#BA7517','#534AB7','#A32D2D'];
+
+function drawScoreChart(entries){
+  const canvas=document.getElementById('scoreChart');
+  if(!canvas)return;
+  // Get last 14 days with at least one score
+  const days=[...new Set(entries.map(e=>e.date))].sort().slice(-14);
+  if(!days.length){canvas.style.display='none';return;}
+  canvas.style.display='block';
+  const dpr=window.devicePixelRatio||1;
+  const W=canvas.offsetWidth||300, H=200;
+  canvas.width=W*dpr; canvas.height=H*dpr;
+  canvas.style.width=W+'px'; canvas.style.height=H+'px';
+  const ctx=canvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+
+  const PAD={top:10,right:12,bottom:28,left:28};
+  const cw=W-PAD.left-PAD.right, ch=H-PAD.top-PAD.bottom;
+
+  // Draw grid
+  ctx.strokeStyle='rgba(0,0,0,0.06)'; ctx.lineWidth=0.5;
+  [1,2,3,4,5].forEach(v=>{
+    const y=PAD.top+ch-(v-1)/4*ch;
+    ctx.beginPath(); ctx.moveTo(PAD.left,y); ctx.lineTo(PAD.left+cw,y); ctx.stroke();
+    ctx.fillStyle='#888780'; ctx.font=`${9*dpr/dpr}px -apple-system,sans-serif`; ctx.textAlign='right';
+    ctx.fillText(v, PAD.left-4, y+3);
+  });
+
+  // X axis labels
+  const step=Math.max(1,Math.floor(days.length/5));
+  ctx.fillStyle='#888780'; ctx.font=`${9}px -apple-system,sans-serif`; ctx.textAlign='center';
+  days.forEach((d,i)=>{
+    if(i%step===0||i===days.length-1){
+      const x=PAD.left+(i/(Math.max(days.length-1,1)))*cw;
+      ctx.fillText(d.slice(5), x, H-PAD.bottom+14);
+    }
+  });
+
+  // Plot each score dimension
+  SK.forEach((k,ki)=>{
+    const pts=days.map((d,i)=>{
+      const dayEntries=entries.filter(e=>e.date===d&&e.scores&&e.scores[k]);
+      if(!dayEntries.length) return null;
+      const avg=dayEntries.reduce((s,e)=>s+e.scores[k],0)/dayEntries.length;
+      return{x:PAD.left+(i/(Math.max(days.length-1,1)))*cw, y:PAD.top+ch-(avg-1)/4*ch, v:avg};
+    });
+    ctx.strokeStyle=CHART_COLORS[ki]; ctx.lineWidth=2; ctx.lineJoin='round'; ctx.lineCap='round';
+    ctx.beginPath();
+    let started=false;
+    pts.forEach(p=>{
+      if(!p) return;
+      if(!started){ctx.moveTo(p.x,p.y);started=true;}
+      else ctx.lineTo(p.x,p.y);
+    });
+    ctx.stroke();
+    // dots
+    pts.forEach(p=>{
+      if(!p) return;
+      ctx.beginPath(); ctx.arc(p.x,p.y,3,0,Math.PI*2);
+      ctx.fillStyle=CHART_COLORS[ki]; ctx.fill();
+    });
+  });
+
+  // Legend
+  const leg=document.getElementById('chartLegend');
+  if(leg) leg.innerHTML=SK.map((k,i)=>`<span style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--t2)"><span style="width:14px;height:3px;border-radius:2px;background:${CHART_COLORS[i]};display:inline-block"></span>${SL[k]}</span>`).join('');
+}
+
 function renderT(){
   const entries=ge();
   if(!entries.length){['tsr','tbars','bpbars','sympbars'].forEach(id=>document.getElementById(id).innerHTML='<p style="font-size:13px;color:var(--t3);padding:4px 0">暂无数据</p>');return}
-  // Collect ALL individual readings across all entries
+
   const allReadings=entries.flatMap(e=>e.bpReadings||[]);
   const bpa=allReadings.length?allReadings:entries.filter(e=>e.bp&&e.bp.sys).map(e=>e.bp);
   const ab=bpa.length?Math.round(bpa.reduce((s,r)=>s+r.sys,0)/bpa.length):null;
-  const hb=entries.filter(e=>{const rs=e.bpReadings||[];return rs.some(r=>r.sys>=140||r.dia>=90)||(!rs.length&&e.bp&&(e.bp.sys>=140||e.bp.dia>=90))}).length;
   const uniqueDays=new Set(entries.map(e=>e.date)).size;
+  const hb=[...new Set(entries.map(e=>e.date))].filter(d=>{
+    const de=entries.filter(e=>e.date===d);
+    return de.some(e=>{const rs=e.bpReadings||[];return rs.some(r=>r.sys>=140||r.dia>=90)||(!rs.length&&e.bp&&(e.bp.sys>=140||e.bp.dia>=90));});
+  }).length;
+
   document.getElementById('tsr').innerHTML=`<div class="sb"><div class="sv">${uniqueDays}</div><div class="slb">记录天数</div></div><div class="sb"><div class="sv" style="color:${ab&&ab>=140?'var(--r)':'var(--bm)'}">${ab||'--'}</div><div class="slb">平均收缩压</div></div><div class="sb"><div class="sv" style="color:${hb>5?'var(--r)':'var(--g)'}">${hb}</div><div class="slb">高血压天数</div></div>`;
+
+  // Score chart
+  setTimeout(()=>drawScoreChart(entries), 50);
+
+  // Score avg bars
   const avgs={};
   SK.forEach(k=>{const v=entries.map(e=>e.scores&&e.scores[k]).filter(v=>v>0);avgs[k]=v.length?v.reduce((a,b)=>a+b)/v.length:0});
-  document.getElementById('tbars').innerHTML=SK.map(k=>{const a=avgs[k],p=Math.round(a/5*100),c=a>=4?'#639922':a>=3?'#EF9F27':'#E24B4A';return`<div class="br"><span class="brl">${SL[k]}</span><div class="brt"><div class="brf" style="width:${p}%;background:${c}"></div></div><span class="brv">${a?a.toFixed(1):'-'}</span></div>`}).join('');
-  const bpDays=entries.filter(e=>(e.bpReadings&&e.bpReadings.length)||e.bp).map(e=>{
-    const rs=e.bpReadings||[];
-    const maxSys=rs.length?Math.max(...rs.map(r=>r.sys)):(e.bp?e.bp.sys:0);
-    const maxDia=rs.length?Math.max(...rs.map(r=>r.dia)):(e.bp?e.bp.dia:0);
-    return{date:e.date,sys:maxSys,dia:maxDia,count:rs.length||1};
-  }).filter(e=>e.sys);
-  const bp10=bpDays.slice(0,10).reverse();
-  document.getElementById('bpbars').innerHTML=bp10.length?bp10.map(e=>{const p=Math.round(e.sys/Math.max(...bp10.map(x=>x.sys),180)*100),c=e.sys>=180?'#A32D2D':e.sys>=140?'#E24B4A':'#378ADD';return`<div class="br"><span class="brl" style="font-size:11px">${e.date.slice(5)}</span><div class="brt"><div class="brf" style="width:${p}%;background:${c}"></div></div><span class="brv" style="color:${c}">${e.sys}${e.count>1?'<br><span style=\'font-size:9px;color:var(--t3)\'>'+e.count+'次</span>':''}</span></div>`}).join(''):'<p style="font-size:13px;color:var(--t3)">暂无血压记录</p>';
+  document.getElementById('tbars').innerHTML=SK.map((k,i)=>{const a=avgs[k],p=Math.round(a/5*100),c=CHART_COLORS[i];return`<div class="br"><span class="brl">${SL[k]}</span><div class="brt"><div class="brf" style="width:${p}%;background:${c}"></div></div><span class="brv">${a?a.toFixed(1):'-'}</span></div>`}).join('');
+
+  // BP bars — show all available days
+  const bpDays=[...new Set(entries.map(e=>e.date))].map(d=>{
+    const de=entries.filter(e=>e.date===d);
+    const rs=de.flatMap(e=>e.bpReadings||[]);
+    const bpFallback=de.find(e=>e.bp&&e.bp.sys);
+    if(!rs.length&&!bpFallback) return null;
+    const maxSys=rs.length?Math.max(...rs.map(r=>r.sys)):(bpFallback?bpFallback.bp.sys:0);
+    const maxDia=rs.length?Math.max(...rs.map(r=>r.dia)):(bpFallback?bpFallback.bp.dia:0);
+    const cnt=rs.length||1;
+    return{date:d,sys:maxSys,dia:maxDia,count:cnt};
+  }).filter(Boolean).sort((a,b)=>a.date.localeCompare(b.date)).slice(-14);
+
+  document.getElementById('bpbars').innerHTML=bpDays.length
+    ?bpDays.map(e=>{
+        const p=Math.round(e.sys/Math.max(...bpDays.map(x=>x.sys),180)*100);
+        const c=e.sys>=180?'#A32D2D':e.sys>=140?'#E24B4A':'#378ADD';
+        return`<div class="br"><span class="brl" style="font-size:11px">${e.date.slice(5)}</span><div class="brt"><div class="brf" style="width:${p}%;background:${c}"></div></div><span class="brv" style="color:${c};font-size:10px">${e.sys}${e.count>1?'<br><span style="font-size:9px;color:var(--t3)">'+e.count+'次</span>':''}</span></div>`;
+      }).join('')
+    :'<p style="font-size:13px;color:var(--t3)">尚无血压记录</p>';
+
+  // Symptom freq
   const fc={};entries.forEach(e=>(e.symptoms||[]).forEach(s=>{fc[s]=(fc[s]||0)+1}));
   const sorted=Object.entries(fc).sort((a,b)=>b[1]-a[1]).slice(0,8);
-  document.getElementById('sympbars').innerHTML=sorted.length?sorted.map(([s,c])=>`<div class="br"><span class="brl">${s}</span><div class="brt"><div class="brf" style="width:${Math.round(c/sorted[0][1]*100)}%;background:var(--pu)"></div></div><span class="brv">${c}</span></div>`).join(''):'<p style="font-size:13px;color:var(--t3)">暂无症状记录</p>';
+  document.getElementById('sympbars').innerHTML=sorted.length
+    ?sorted.map(([s,cnt])=>`<div class="br"><span class="brl">${s}</span><div class="brt"><div class="brf" style="width:${Math.round(cnt/sorted[0][1]*100)}%;background:var(--pu)"></div></div><span class="brv">${cnt}</span></div>`).join('')
+    :'<p style="font-size:13px;color:var(--t3)">暂无症状记录</p>';
 }
 
 // Code modal
