@@ -329,6 +329,9 @@ sb.onclick=enter;
 
 function enter(){
   const v=si.value.trim().toLowerCase(); if(!v)return;
+  const prev=gc();
+  // If switching to a different code, clear local cache first
+  if(prev && prev!==v) se([]);
   FC=v; sc(v);
   document.getElementById('setup').style.display='none';
   document.getElementById('app').style.display='flex';
@@ -811,7 +814,9 @@ function closeCM(){document.getElementById('cmodal').classList.remove('open')}
 function changeCode(){
   const v=document.getElementById('mcode').value.trim().toLowerCase();
   if(!v||v.length<4||!/^[a-zA-Z0-9_-]+$/.test(v)){alert('家庭码格式不正确');return}
-  FC=v;sc(v);document.getElementById('cdisp').textContent='码：'+v;closeCM();syncNow();
+  if(v!==FC) se([]); // clear local cache when switching
+  FC=v;sc(v);document.getElementById('cdisp').textContent='码：'+v;closeCM();
+  renderH(); syncNow();
 }
 document.getElementById('cmodal').onclick=e=>{if(e.target===e.currentTarget)closeCM()};
 
