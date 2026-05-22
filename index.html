@@ -298,7 +298,13 @@ textarea::placeholder{color:var(--t3)}
 
 <script>
 // ▶ IMPORTANT: Replace with your Cloudflare Worker URL after deploying worker/
-const API = 'https://grandma-health-sync.roy-chen.workers.dev';
+const SUPA_URL = 'https://xrkbftwaruavsrzxvfeo.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhya2JmdHdhcnVhdnNyenh2ZmVvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MjkxNTQsImV4cCI6MjA5NTAwNTE1NH0._jew9pgsvV-RNUWEvdOh_DJHk2BEVouo0ps9Yane3ZY';
+const SUPA_HEADERS = {
+  'Content-Type': 'application/json',
+  'apikey': SUPA_KEY,
+  'Authorization': 'Bearer ' + SUPA_KEY
+};
 
 const SK=['mental','mood','mobility','sleep','diet'];
 const SL={mental:'精神',mood:'情绪',mobility:'行动',sleep:'睡眠',diet:'饮食'};
