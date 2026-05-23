@@ -220,6 +220,8 @@ textarea::placeholder{color:var(--t3)}
             <span class="bpslash">/</span>
             <input type="number" id="bpd" placeholder="舒张压" min="40" max="160" inputmode="numeric"/>
             <span id="bph" class="bph"></span>
+            <span style="font-size:13px;color:var(--t3);margin-left:4px">心率</span>
+            <input type="number" id="bphr" placeholder="次/分" min="30" max="250" inputmode="numeric" style="width:64px"/>
           </div>
           <div style="display:flex;gap:6px;width:100%;align-items:center;flex-wrap:wrap">
             <input class="bp-time-input" type="time" id="bptime"/>
@@ -315,7 +317,7 @@ const SI={
   sleep:'<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>',
   diet:'<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>'
 };
-const SYMS=['头晕','头痛','胸闷','心慌','焦虑','幻觉','妄想','激动不安','坐卧不安','拒绝配合','认知混乱','说胡话','肩痛','跌倒','呕吐','浮肿','气短','食欲差'];
+const SYMS=['头晕','头痛','胸闷','心慌','焦虑','幻觉','妄想','激动不安','坐卧不安','拒绝配合','认知混乱','说胡话','肩痛','跌倒','呕吐','浮肿','气短','食欲差','乏力','呛咳'];
 const MEDS=['按时服药','拒绝服药','漏服','自行加量'];
 
 let FC='', scores={mental:0,mood:0,mobility:0,sleep:0,diet:0};
@@ -489,11 +491,13 @@ function addBP(){
   const s=+document.getElementById('bps').value,d=+document.getElementById('bpd').value;
   if(!s||!d){alert('请输入收缩压和舒张压');return}
   if(s<60||s>260||d<40||d>160){alert('血压数值超出合理范围');return}
+  const hr=+document.getElementById('bphr').value||null;
   const time=document.getElementById('bptime').value;
   const note=document.getElementById('bpnote').value.trim();
-  bpReadings.push({sys:s,dia:d,time,note,id:Date.now()});
+  bpReadings.push({sys:s,dia:d,hr,time,note,id:Date.now()});
   document.getElementById('bps').value='';
   document.getElementById('bpd').value='';
+  document.getElementById('bphr').value='';
   document.getElementById('bpnote').value='';
   document.getElementById('bph').textContent='';
   renderBPList();
@@ -509,7 +513,8 @@ function renderBPList(){
   if(!bpReadings.length){el.innerHTML='<div class="bp-empty">尚无血压记录，填写后点添加</div>';return}
   el.innerHTML='<div class="bp-list">'+bpReadings.map(r=>{
     const cls=bpClass(r.sys);
-    const meta=[r.time,r.note].filter(Boolean).join(' · ');
+    const hrStr=r.hr?` · 心率 ${r.hr}`:'';
+    const meta=[r.time,r.note].filter(Boolean).join(' · ')+hrStr;
     return`<div class="bp-item"><span class="bp-item-val ${cls}">${r.sys}/${r.dia}</span><span class="bp-item-meta">${meta||'未标注时间'}</span><button class="bp-item-del" onclick="delBP(${r.id})">×</button></div>`;
   }).join('')+'</div>';
 }
@@ -546,7 +551,7 @@ function resetF(){
   scores={mental:0,mood:0,mobility:0,sleep:0,diet:0};
   bpReadings=[];
   buildSG(); buildTags('stags',SYMS,false); buildTags('mtags',MEDS,true);
-  document.getElementById('bps').value=''; document.getElementById('bpd').value='';
+  document.getElementById('bps').value=''; document.getElementById('bpd').value=''; document.getElementById('bphr').value='';
   document.getElementById('bph').textContent=''; document.getElementById('enote').value='';
   document.getElementById('edate').value=today();
   renderBPList(); setDefaultTime();
@@ -593,7 +598,7 @@ function openDetail(id){
     readings.forEach(r=>{
       const bc=bpClass(r.sys);
       const bcol=bc==='vh'?'var(--r)':bc==='h'?'var(--am)':'var(--bm)';
-      const meta=[r.time,r.note].filter(Boolean).join(' · ');
+      const hrStr=r.hr?` · 心率 ${r.hr}次/分`:''; const meta=[r.time,r.note].filter(Boolean).join(' · ')+hrStr;
       html+=`<div class="dp-row"><span class="dp-row-label">${meta||'未标注时间'}</span><span class="dp-row-val" style="color:${bcol}">${r.sys}/${r.dia} <small style="font-size:10px;color:var(--t3)">mmHg</small></span></div>`;
     });
     html+=`</div>`;
